@@ -42,5 +42,16 @@ make clean && make
 sclang synthdefs.scd
 ```
 
-## Android APK
-See [`android/`](android/) for building and installing the APK via Gradle.
+## Android Mobile Conductor (APK)
+
+The `android/` directory contains the complete native Android port:
+- **Vision**: Uses Android Camera2 API (`ImageReader`) with the front-facing (selfie) camera, streaming frames into the native C connected-component tracker at 60 FPS.
+- **Embedded Audio**: Includes a zero-latency real-time AAudio stereo synthesizer (`conductor_audio.c`) running 48 kHz floating-point DSP directly on the phone (Moog ladder lead tone, polyphonic ambient wash, metallic FM ictus chime, sub-bass tutti thump).
+- **Wireless OSC**: Continuously broadcasts `/gesture/hand/left`, `/gesture/hand/right`, `/gesture/ictus`, and `/gesture/tutti` over UDP to any target host on the network (configurable live in the HUD, default `10.0.0.18:57120`).
+- **Retro CRT Phosphor Radar**: Custom vector `OverlayView` displaying real-time tracking crosshairs, elevation meters, and expanding ripple animations for baton downbeats.
+
+### Build & Install APK
+```bash
+make apk            # Builds gestureConductor.apk via Gradle + NDK
+make install-apk    # Installs directly to connected phone via adb
+```

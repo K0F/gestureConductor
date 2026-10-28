@@ -36,4 +36,15 @@ run-headless: $(TARGET)
 run-external: $(TARGET)
 	./$(TARGET) --no-sc
 
-.PHONY: all clean run run-headless run-external synthdefs
+ANDROID_HOME ?= $(HOME)/Android/Sdk
+JAVA_HOME ?= /usr/lib/jvm/java-17-openjdk
+
+apk:
+	cd android && ANDROID_HOME=$(ANDROID_HOME) JAVA_HOME=$(JAVA_HOME) ./gradlew assembleDebug --no-daemon
+	cp android/app/build/outputs/apk/debug/app-debug.apk gestureConductor.apk
+	@echo "Built gestureConductor.apk successfully."
+
+install-apk: apk
+	adb install -r gestureConductor.apk
+
+.PHONY: all clean run run-headless run-external synthdefs apk install-apk

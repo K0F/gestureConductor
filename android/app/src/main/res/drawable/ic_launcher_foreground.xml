@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- broadcast tower on a hill -->
+    <path
+        android:fillColor="#2e8b57"
+        android:pathData="M54,22 L62,86 L46,86 Z" />
+    <path
+        android:fillColor="#7fbf9b"
+        android:pathData="M54,33 L59,74 L49,74 Z" />
+    <path
+        android:fillColor="#f5f5ed"
+        android:pathData="M54,30 L55,60 L53,60 Z" />
+
+    <!-- radiating signal arcs -->
+    <path
+        android:strokeColor="#2e8b57"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M40,40 A22,22 0 0,1 54,28" />
+    <path
+        android:strokeColor="#2e8b57"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M68,40 A22,22 0 0,0 54,28" />
+    <path
+        android:strokeColor="#1e5c3d"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M34,52 A30,30 0 0,1 54,24" />
+    <path
+        android:strokeColor="#1e5c3d"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M74,52 A30,30 0 0,0 54,24" />
+</vector>

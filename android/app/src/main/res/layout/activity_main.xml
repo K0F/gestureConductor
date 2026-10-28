@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050805">
+
+    <!-- Camera Preview Texture -->
+    <TextureView
+        android:id="@+id/camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.25" />
+
+    <!-- High-speed CRT Phosphor Radar Overlay -->
+    <org.kof.gestureconductor.OverlayView
+        android:id="@+id/overlay_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Top HUD Controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#99000000">
+
+        <EditText
+            android:id="@+id/edit_ip"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.4"
+            android:hint="10.0.0.18"
+            android:text="10.0.0.18"
+            android:textSize="12sp"
+            android:textColor="#33ff66"
+            android:textColorHint="#228844"
+            android:background="#22003311"
+            android:padding="6dp"
+            android:inputType="textUri" />
+
+        <EditText
+            android:id="@+id/edit_port"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.8"
+            android:hint="57120"
+            android:text="57120"
+            android:textSize="12sp"
+            android:textColor="#33ff66"
+            android:textColorHint="#228844"
+            android:background="#22003311"
+            android:layout_marginStart="4dp"
+            android:padding="6dp"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/btn_audio"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="SND: ON"
+            android:textSize="10sp"
+            android:textColor="#050805"
+            android:background="#33ff66"
+            android:layout_marginStart="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_flip_cam"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="CAM"
+            android:textSize="10sp"
+            android:textColor="#33ff66"
+            android:background="#22003311"
+            android:layout_marginStart="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+
+    </LinearLayout>
+
+</FrameLayout>

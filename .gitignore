@@ -1,3 +1,11 @@
 gesture_conductor
 __pycache__/
 *.o
+*.apk
+.gradle/
+local.properties
+android/local.properties
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/build/
