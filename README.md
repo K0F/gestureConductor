@@ -44,6 +44,8 @@ sclang synthdefs.scd
 
 ## Android Mobile Conductor (APK)
 
+![Android Live Preview](docs/android_live_preview.png)
+
 The `android/` directory contains the complete native Android port:
 - **Vision**: Uses Android Camera2 API (`ImageReader`) with the front-facing (selfie) camera, streaming frames into the native C connected-component tracker at 60 FPS.
 - **Embedded Audio**: Includes a zero-latency real-time AAudio stereo synthesizer (`conductor_audio.c`) running 48 kHz floating-point DSP directly on the phone (Moog ladder lead tone, polyphonic ambient wash, metallic FM ictus chime, sub-bass tutti thump).
