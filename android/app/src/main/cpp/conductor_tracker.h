@@ -20,7 +20,7 @@ typedef struct {
 } ConductorTelemetry;
 
 bool tracker_init(int in_w, int in_h, const char *osc_host, int osc_port);
-void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int row_stride, ConductorTelemetry *out_telem);
+void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int row_stride, int rotation, int is_front, ConductorTelemetry *out_telem);
 void tracker_set_osc_target(const char *host, int port);
 void tracker_close(void);
 

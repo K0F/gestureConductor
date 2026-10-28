@@ -15,8 +15,8 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-#define PROC_W 160
-#define PROC_H 120
+#define PROC_W 120
+#define PROC_H 160
 #define NUM_PIXELS (PROC_W * PROC_H)
 
 static uint8_t g_prev_frame[NUM_PIXELS];
@@ -198,22 +198,53 @@ void tracker_set_osc_target(const char *host, int port) {
     LOGI("OSC destination configured: %s:%d", host, port);
 }
 
-void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int row_stride, ConductorTelemetry *out_telem) {
+void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int row_stride, int rotation, int is_front, ConductorTelemetry *out_telem) {
     static double last_frame_time = 0.0;
     double now = get_time_sec();
     double dt = (last_frame_time > 0.0) ? (now - last_frame_time) : 0.033;
     if (dt <= 0.001) dt = 0.033;
     last_frame_time = now;
 
-    // 1. Bilinear downsample Y-plane to 160x120
-    float x_ratio = (float)(width - 1) / (float)PROC_W;
-    float y_ratio = (float)(height - 1) / (float)PROC_H;
+    // Center-crop factor: screen is ~9:20 (0.45), portrait camera is 3:4 (0.75)
+    // 0.45 / 0.75 = 0.60
+    const float CROP_SPAN_X = 0.60f;
 
+    // Resample raw camera into screen-aligned portrait grid (120x160)
     for (int y = 0; y < PROC_H; y++) {
-        int src_y = (int)(y * y_ratio);
-        const uint8_t *row_ptr = y_data + src_y * row_stride;
+        float v = (float)y / (float)(PROC_H - 1); // 0.0 (top) to 1.0 (bottom)
         for (int x = 0; x < PROC_W; x++) {
-            int src_x = (int)(x * x_ratio);
+            float u_screen = (float)x / (float)(PROC_W - 1); // 0.0 (left) to 1.0 (right)
+            float u_cam = 0.5f + (u_screen - 0.5f) * CROP_SPAN_X;
+            if (u_cam < 0.0f) u_cam = 0.0f;
+            if (u_cam > 1.0f) u_cam = 1.0f;
+
+            int src_x = 0;
+            int src_y = 0;
+
+            if (rotation == 270 && is_front) {
+                // Front selfie camera in portrait:
+                // Screen top (v=0) -> sensor right (src_x = width - 1)
+                // Screen right (u=1) -> sensor top (src_y = 0)
+                src_x = (int)((1.0f - v) * (width - 1));
+                src_y = (int)((1.0f - u_cam) * (height - 1));
+            } else if (rotation == 90 && !is_front) {
+                // Back camera in portrait:
+                // Screen top (v=0) -> sensor left (src_x = 0)
+                // Screen right (u=1) -> sensor bottom (src_y = height - 1)
+                src_x = (int)(v * (width - 1));
+                src_y = (int)(u_cam * (height - 1));
+            } else {
+                // Default fallback
+                src_x = (int)(u_cam * (width - 1));
+                src_y = (int)(v * (height - 1));
+            }
+
+            if (src_x < 0) src_x = 0;
+            if (src_x >= width) src_x = width - 1;
+            if (src_y < 0) src_y = 0;
+            if (src_y >= height) src_y = height - 1;
+
+            const uint8_t *row_ptr = y_data + src_y * row_stride;
             g_curr_frame[y * PROC_W + x] = row_ptr[src_x];
         }
     }
@@ -229,15 +260,22 @@ void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int r
     float sum_r_x = 0, sum_r_y = 0, mass_r = 0;
     int min_lx = PROC_W, max_lx = 0, min_rx = PROC_W, max_rx = 0;
 
-    const uint8_t NOISE_GATE = 18;
+    const uint8_t NOISE_GATE = 14;
 
-    for (int y = 8; y < PROC_H - 8; y++) {
-        for (int x = 8; x < PROC_W - 8; x++) {
+    for (int y = 4; y < PROC_H - 4; y++) {
+        for (int x = 4; x < PROC_W - 4; x++) {
             int idx = y * PROC_W + x;
             int diff = abs((int)g_curr_frame[idx] - (int)g_prev_frame[idx]);
             if (diff > NOISE_GATE) {
                 float w = (float)(diff - NOISE_GATE);
-                // Spatial partition: Left side vs Right side
+
+                // Attenuate center zone (head/torso) so lateral hand movements dominate
+                float norm_x = (float)x / (float)PROC_W;
+                if (norm_x > 0.40f && norm_x < 0.60f) {
+                    w *= 0.25f;
+                }
+
+                // Spatial partition: Left side (x < PROC_W / 2) vs Right side (x >= PROC_W / 2)
                 if (x < PROC_W / 2) {
                     sum_l_x += x * w;
                     sum_l_y += y * w;
@@ -256,14 +294,14 @@ void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int r
     }
     memcpy(g_prev_frame, g_curr_frame, NUM_PIXELS);
 
-    // 3. Left Hand Filtering
-    bool det_l = (mass_l > 400.0f);
+    // 3. Left Hand Filtering (Threshold: 140.0)
+    bool det_l = (mass_l > 140.0f);
     if (det_l) {
         float raw_lx = (sum_l_x / mass_l) / (float)PROC_W;
         float raw_ly = (sum_l_y / mass_l) / (float)PROC_H;
         g_left_hand.cx = one_euro_filter(raw_lx, &g_left_euro.x, &g_left_euro.dx, dt, 1.2f, 0.4f, 1.0f);
         g_left_hand.cy = one_euro_filter(raw_ly, &g_left_euro.y, &g_left_euro.dy, dt, 1.2f, 0.4f, 1.0f);
-        g_left_hand.energy = mass_l / 12000.0f;
+        g_left_hand.energy = mass_l / 8000.0f;
         g_left_hand.span = (float)(max_lx - min_lx) / (float)PROC_W;
         g_left_hand.active_frames++;
         g_left_hand.lost_frames = 0;
@@ -272,8 +310,8 @@ void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int r
         g_left_hand.energy *= 0.85f;
     }
 
-    // 4. Right Hand Filtering & Kinematics
-    bool det_r = (mass_r > 400.0f);
+    // 4. Right Hand Filtering & Kinematics (Threshold: 140.0)
+    bool det_r = (mass_r > 140.0f);
     float last_vy = g_right_hand.vy;
     if (det_r) {
         float raw_rx = (sum_r_x / mass_r) / (float)PROC_W;
@@ -287,7 +325,7 @@ void tracker_process_y_plane(const uint8_t *y_data, int width, int height, int r
 
         g_right_hand.cx = filt_rx;
         g_right_hand.cy = filt_ry;
-        g_right_hand.energy = mass_r / 12000.0f;
+        g_right_hand.energy = mass_r / 8000.0f;
         g_right_hand.span = (float)(max_rx - min_rx) / (float)PROC_W;
         g_right_hand.active_frames++;
         g_right_hand.lost_frames = 0;

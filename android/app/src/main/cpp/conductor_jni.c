@@ -43,6 +43,8 @@ Java_org_kof_gestureconductor_MainActivity_nativeProcessFrame(
     jint width,
     jint height,
     jint rowStride,
+    jint rotation,
+    jint isFront,
     jfloatArray outTelemetry)
 {
     (void)thiz;
@@ -52,7 +54,7 @@ Java_org_kof_gestureconductor_MainActivity_nativeProcessFrame(
     if (!y_data) return;
 
     ConductorTelemetry telem;
-    tracker_process_y_plane((const uint8_t *)y_data, width, height, rowStride, &telem);
+    tracker_process_y_plane((const uint8_t *)y_data, width, height, rowStride, rotation, isFront, &telem);
 
     (*env)->ReleasePrimitiveArrayCritical(env, yPlane, y_data, JNI_ABORT);
 

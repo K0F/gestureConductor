@@ -47,4 +47,12 @@ apk:
 install-apk: apk
 	adb install -r gestureConductor.apk
 
-.PHONY: all clean run run-headless run-external synthdefs apk install-apk
+release-apk:
+	cd android && ANDROID_HOME=$(ANDROID_HOME) JAVA_HOME=$(JAVA_HOME) ./gradlew assembleRelease --no-daemon
+	cp android/app/build/outputs/apk/release/app-release.apk gestureConductor-release.apk
+	@echo "Built gestureConductor-release.apk successfully."
+
+install-release: release-apk
+	adb install -r gestureConductor-release.apk
+
+.PHONY: all clean run run-headless run-external synthdefs apk install-apk release-apk install-release

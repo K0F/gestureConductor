@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
     }
 
     private native boolean nativeInit(int w, int h, String oscHost, int oscPort, boolean audioEnabled);
-    private native void nativeProcessFrame(byte[] yPlane, int width, int height, int rowStride, float[] outTelemetry);
+    private native void nativeProcessFrame(byte[] yPlane, int width, int height, int rowStride, int rotation, int isFront, float[] outTelemetry);
     private native void nativeSetOscTarget(String oscHost, int oscPort);
     private native void nativeSetAudioEnabled(boolean enabled);
     private native void nativeClose();
@@ -52,6 +52,8 @@ public class MainActivity extends Activity {
     private boolean audioEnabled = true;
     private int activeFacing = CameraCharacteristics.LENS_FACING_FRONT;
     private String cameraFacingId = null;
+    private int sensorOrientation = 270;
+    private boolean isFrontCamera = true;
 
     private CameraDevice cameraDevice;
     private CameraCaptureSession captureSession;
@@ -110,12 +112,38 @@ public class MainActivity extends Activity {
 
         previewView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                configureTransform(width, height);
                 openCamera();
             }
-            @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
+            @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+                configureTransform(width, height);
+            }
             @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { return true; }
             @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
         });
+    }
+
+    private void configureTransform(int viewWidth, int viewHeight) {
+        if (previewView == null || viewWidth <= 0 || viewHeight <= 0) return;
+        android.graphics.Matrix matrix = new android.graphics.Matrix();
+
+        // In portrait, the rotated camera buffer has effective aspect ratio of 3:4 (0.75)
+        float bufRatio = 240.0f / 320.0f;
+        float viewRatio = (float) viewWidth / (float) viewHeight;
+
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
+
+        if (bufRatio > viewRatio) {
+            scaleX = bufRatio / viewRatio;
+            scaleY = 1.0f;
+        } else {
+            scaleX = 1.0f;
+            scaleY = viewRatio / bufRatio;
+        }
+
+        matrix.setScale(scaleX, scaleY, viewWidth / 2.0f, viewHeight / 2.0f);
+        previewView.setTransform(matrix);
     }
 
     @Override
@@ -182,6 +210,14 @@ public class MainActivity extends Activity {
                 cameraFacingId = manager.getCameraIdList()[0];
             }
 
+            if (cameraFacingId != null) {
+                CameraCharacteristics chars = manager.getCameraCharacteristics(cameraFacingId);
+                Integer orient = chars.get(CameraCharacteristics.SENSOR_ORIENTATION);
+                sensorOrientation = (orient != null) ? orient : 270;
+                Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+                isFrontCamera = (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT);
+            }
+
             if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 return;
             }
@@ -203,7 +239,7 @@ public class MainActivity extends Activity {
                     yBuffer.get(yBytesBuffer);
 
                     // Native Processing in pure C (Tracker + Sound + OSC)
-                    nativeProcessFrame(yBytesBuffer, 320, 240, rowStride, telemetryBuffer);
+                    nativeProcessFrame(yBytesBuffer, 320, 240, rowStride, sensorOrientation, isFrontCamera ? 1 : 0, telemetryBuffer);
 
                     // Update UI Overlay
                     overlayView.updateTelemetry(telemetryBuffer);
@@ -247,6 +283,7 @@ public class MainActivity extends Activity {
                     new CameraCaptureSession.StateCallback() {
                         @Override public void onConfigured(CameraCaptureSession session) {
                             captureSession = session;
+                            runOnUiThread(() -> configureTransform(previewView.getWidth(), previewView.getHeight()));
                             try {
                                 session.setRepeatingRequest(builder.build(), null, backgroundHandler);
                             } catch (CameraAccessException e) {
